@@ -63,7 +63,9 @@ begin
     end
     plt = bar(alignmentsummary,:groupname,:total,
               label="total",
-              title="Alignment per group")
+              title="Reads per group",
+              yaxis=("n. of reads",),
+              xaxis="")
     bar!(alignmentsummary,:groupname,:aligned,
          label="aligned")
     display(plt)
@@ -75,6 +77,8 @@ begin
     plt = violin(alignment,:groupname,:total,
                  side=:left,
                  label="total",
+                 yaxis=("n. of reads per cell",),
+                 xaxis="",
                  title="Reads per cell")
     violin!(alignment,:groupname,:aligned,
             label="aligned",
@@ -88,6 +92,7 @@ begin
     plt = violin(alignment,:groupname,:percentage,
                  title="Relative alignment",
                  yaxis=("Alignment %",(0,1)),
+                 xaxis="",
                  label="")
     display(plt)
 end

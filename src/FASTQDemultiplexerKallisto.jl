@@ -14,10 +14,14 @@ cxxinclude(joinpath(path_to_lib,"align-lib.h"))
 
 type OutputKallisto <: Output
     results::DataFrame
+    writealignment::Bool
+    writereport::Bool
 end
 
 function OutputKallisto(protocol::Interpreter;
                         index::String = "",
+                        writealignment = true,
+                        writerport = true,
                         kwargs...)
     if !isfile(index)
         error("Could not locate index file $index")
@@ -29,7 +33,9 @@ function OutputKallisto(protocol::Interpreter;
                         umiid = UInt[],
                         groupname = PooledDataArray(String,UInt8,0),
                         alignment = Int[])
-    return OutputKallisto(results)
+    return OutputKallisto(results,
+                          writealignment,
+                          writereport)
 end
 
 function align(ir::InterpretedRecord)
@@ -48,11 +54,19 @@ end
 function mergeoutput(outputs::Vector{OutputKallisto};
                      outputdir::String=".",
                      kwargs...)
-    results = vcat((o.results for o in outputs)...)
+    if length(output) > 1
+        results = vcat((o.results for o in outputs)...)
+    else
+        results = outputs[1].results
+    end
 
-    report(results, outputdir)
+    if outputs[1].writealignment
+        writetable(joinpath(outputdir,"alignment.tsv"),results)
+    end
 
-    writetable(joinpath(outputdir,"kallisto.tsv"),results)
+    if outputs[1].writereport
+        report(results, outputdir)
+    end
 end
 
 function report(results, outputdir)
