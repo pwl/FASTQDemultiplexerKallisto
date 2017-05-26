@@ -1,1 +1,6 @@
 julia 0.5
+Cxx
+FASTQDemultiplexer
+Plots
+StatPlots
+DataFrames

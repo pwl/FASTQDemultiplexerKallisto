@@ -1,0 +1,107 @@
+# Kallisto alignment statistics #
+
+```{julia;echo=false}
+import Weave
+Weave.set_chunk_defaults(Dict{Symbol, Any}(
+    :echo => false
+))
+```
+
+
+```julia
+using Plots
+using StatPlots
+using DataFrames
+plotly();
+results = WEAVE_ARGS["results"]
+alignment = by(results,:cellid) do r
+    DataFrame(total=size(r,1),
+              aligned=sum(r[:alignment].>-1))
+end
+alignment = join(alignment,
+                 unique(results[[:cellid,:groupname]]),
+                 on=:cellid)
+alignment = join(alignment,
+                 DataFrame(cellid=alignment[:cellid],
+                           percentage=(alignment[:aligned]+1e-4)./(alignment[:total]+1e-4)),
+                 on=:cellid)
+maxas = maximum(alignment[:aligned])
+```
+
+```julia
+begin
+    plt = scatter(xaxis = ("total",:log10,(0.9,maxas)),
+                  yaxis= ("aligned",:log10,(0.9,maxas)),
+                  aspect_ratio = :equal,
+                  title = "Aligned vs total reads per cell")
+
+    scatter!(alignment,
+             :total,
+             :aligned,
+             group=:groupname,
+             markersize=1,
+             alpha=0.5,
+             markerstrokewidth=0,
+             hover=nothing)
+
+    plot!(collect(0.9:maxas),
+          collect(0.9:maxas),
+          hover = false,
+          linestyle = :dash,
+          linecolor = :red,
+          label = "")
+
+    display(plt)
+end
+```
+
+```julia
+begin
+    alignmentsummary = by(alignment,:groupname) do f
+        DataFrame(total=sum(f[:total]),
+                  aligned=sum(f[:aligned]))
+    end
+    plt = bar(alignmentsummary,:groupname,:total,
+              label="total",
+              title="Alignment per group")
+    bar!(alignmentsummary,:groupname,:aligned,
+         label="aligned")
+    display(plt)
+end
+```
+
+```julia
+begin
+    plt = violin(alignment,:groupname,:total,
+                 side=:left,
+                 label="total",
+                 title="Reads per cell")
+    violin!(alignment,:groupname,:aligned,
+            label="aligned",
+            side=:right)
+    display(plt)
+end
+```
+
+```julia
+begin
+    plt = violin(alignment,:groupname,:percentage,
+                 title="Relative alignment",
+                 yaxis=("Alignment %",(0,1)),
+                 label="")
+    display(plt)
+end
+```
+
+```julia
+begin
+    sort!(alignment,cols=:aligned,rev=true)
+    plt = plot(alignment,:aligned,
+               group=:groupname,
+               title="Alignment per cell",
+               xaxis=("Cells",:log10,(0.9,size(alignment,1))),
+               yaxis=("Aligned reads",:log10,(0.9,maximum(alignment[:aligned])))
+               )
+    display(plt)
+end
+```
