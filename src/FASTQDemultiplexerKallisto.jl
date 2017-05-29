@@ -21,7 +21,7 @@ end
 function OutputKallisto(protocol::Interpreter;
                         index::String = "",
                         writealignment = true,
-                        writerport = true,
+                        writereport = true,
                         kwargs...)
     if !isfile(index)
         error("Could not locate index file $index")
@@ -54,17 +54,19 @@ end
 function mergeoutput(outputs::Vector{OutputKallisto};
                      outputdir::String=".",
                      kwargs...)
-    if length(output) > 1
+    if length(outputs) > 1
         results = vcat((o.results for o in outputs)...)
     else
         results = outputs[1].results
     end
 
     if outputs[1].writealignment
+        mkpath(outputdir)
         writetable(joinpath(outputdir,"alignment.tsv"),results)
     end
 
     if outputs[1].writereport
+        mkpath(outputdir)
         report(results, outputdir)
     end
 end

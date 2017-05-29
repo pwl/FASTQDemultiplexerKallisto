@@ -64,7 +64,7 @@ begin
     plt = bar(alignmentsummary,:groupname,:total,
               label="total",
               title="Reads per group",
-              yaxis=("n. of reads",),
+              yaxis=("n. of reads",:log10),
               xaxis="")
     bar!(alignmentsummary,:groupname,:aligned,
          label="aligned")
@@ -77,7 +77,7 @@ begin
     plt = violin(alignment,:groupname,:total,
                  side=:left,
                  label="total",
-                 yaxis=("n. of reads per cell",),
+                 yaxis=("n. of reads per cell",:log10),
                  xaxis="",
                  title="Reads per cell")
     violin!(alignment,:groupname,:aligned,
