@@ -64,7 +64,7 @@ begin
     plt = bar(alignmentsummary,:groupname,:total,
               label="total",
               title="Reads per group",
-              yaxis=("n. of reads",:log10),
+              yaxis=("n. of reads"),
               xaxis="")
     bar!(alignmentsummary,:groupname,:aligned,
          label="aligned")
