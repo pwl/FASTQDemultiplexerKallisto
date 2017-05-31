@@ -92,7 +92,7 @@ function mergeoutput{OK<:OutputKallisto}(outputs::Vector{OK};
 end
 
 function report(results, outputdir, names)
-    args = Dict{String,Any}()
+    args = Dict{Symbol,Any}()
     args[:results] = results
     args[:indexnames] = names
 

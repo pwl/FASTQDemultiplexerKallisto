@@ -14,7 +14,7 @@ using StatPlots
 using DataFrames
 plotly();
 results = WEAVE_ARGS[:results]
-names = WEAVE_ARGS[:names]
+indexnames = WEAVE_ARGS[:indexnames]
 alignment = by(results,:cellid) do r
     if :alignment2 in names(results)
         DataFrame(total=size(r,1),
@@ -67,8 +67,8 @@ end
 ```julia
 begin
     if :aligned2 in names(alignment)
-        plt = scatter(xaxis = (names[1],:log10,(0.9,maxas)),
-                      yaxis= (names[2],:log10,(0.9,maxas)),
+        plt = scatter(xaxis = (indexnames[1],:log10,(0.9,maxas)),
+                      yaxis= (indexnames[2],:log10,(0.9,maxas)),
                       aspect_ratio = :equal,
                       title = "Alignment vs different genome.")
 
