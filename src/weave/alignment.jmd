@@ -13,10 +13,17 @@ using Plots
 using StatPlots
 using DataFrames
 plotly();
-results = WEAVE_ARGS["results"]
+results = WEAVE_ARGS[:results]
+names = WEAVE_ARGS[:names]
 alignment = by(results,:cellid) do r
-    DataFrame(total=size(r,1),
-              aligned=sum(r[:alignment].>-1))
+    if :alignment2 in names(results)
+        DataFrame(total=size(r,1),
+                  aligned=sum(r[:alignment].>-1),
+                  aligned2=sum(r[:alignment2].>-1))
+    else
+        DataFrame(total=size(r,1),
+                  aligned=sum(r[:alignment].>-1))
+    end
 end
 alignment = join(alignment,
                  unique(results[[:cellid,:groupname]]),
@@ -27,6 +34,7 @@ alignment = join(alignment,
                  on=:cellid)
 maxas = maximum(alignment[:aligned])
 ```
+
 
 ```julia
 begin
@@ -55,6 +63,37 @@ begin
 end
 ```
 
+
+```julia
+begin
+    if :aligned2 in names(alignment)
+        plt = scatter(xaxis = (names[1],:log10,(0.9,maxas)),
+                      yaxis= (names[2],:log10,(0.9,maxas)),
+                      aspect_ratio = :equal,
+                      title = "Alignment vs different genome.")
+
+        scatter!(alignment,
+                 :aligned,
+                 :aligned2,
+                 group=:groupname,
+                 markersize=1,
+                 alpha=0.5,
+                 markerstrokewidth=0,
+                 hover=nothing)
+
+        plot!(collect(0.9:maxas),
+              collect(0.9:maxas),
+              hover = false,
+              linestyle = :dash,
+              linecolor = :red,
+              label = "")
+
+        display(plt)
+    end
+end
+```
+
+
 ```julia
 begin
     alignmentsummary = by(alignment,:groupname) do f
@@ -72,6 +111,7 @@ begin
 end
 ```
 
+
 ```julia
 begin
     plt = violin(alignment,:groupname,:total,
@@ -87,6 +127,7 @@ begin
 end
 ```
 
+
 ```julia
 begin
     plt = violin(alignment,:groupname,:percentage,
@@ -97,6 +138,7 @@ begin
     display(plt)
 end
 ```
+
 
 ```julia
 begin

@@ -1,27 +1,47 @@
 const libkallisto=joinpath(Pkg.dir("FASTQDemultiplexerKallisto","deps"),"libkallisto_align.so")
+const libkallisto2=joinpath(Pkg.dir("FASTQDemultiplexerKallisto","deps"),"libkallisto_align2.so")
 
-type Kallisto
+@generated function idtolib(val,lib)
+    if lib == Type{Val{1}}
+        return :((val,libkallisto))
+    elseif lib == Type{Val{2}}
+        return :((val,libkallisto2))
+    end
+end
+
+type Kallisto{lib}
     ka::Ptr{Void}
     isopen::Bool
 end
 
-function Kallisto(index::AbstractString)
+
+const kallisto = Dict{String,Kallisto}()
+
+
+function (::Type{Kallisto{lib}}){lib}(index::AbstractString)
+
     if !isfile(index)
         error("Could not locate index at $index")
     end
-    ka = ccall((:kallisto_lib_init,libkallisto),
-               Ptr{Void},())
-    ccall((:kallisto_lib_loadIndex,libkallisto),
-          Void,
-          (Ptr{Void},Cstring),
-          ka,index)
-    Kallisto(ka,true)
+
+    k = get!(kallisto,index) do
+        ka = ccall(idtolib(:kallisto_lib_init,Val{lib}),
+                   Ptr{Void},())
+        ccall(idtolib(:kallisto_lib_loadIndex,Val{lib}),
+              Void,
+              (Ptr{Void},Cstring),
+              ka,index)
+        Kallisto{lib}(ka,true)
+    end
+
+    return k
+
 end
 
-function align(k::Kallisto,ir::InterpretedRecord)
+function align{lib}(k::Kallisto{lib},ir::InterpretedRecord)
     seq = String(ir.output.data[ir.output.sequence])
     if k.isopen
-        ccall((:kallisto_lib_alignRead,libkallisto),
+        ccall(idtolib(:kallisto_lib_alignRead,Val{lib}),
               Int32,
               (Ptr{Void},Ptr{Cchar},UInt32),
               k.ka,seq,length(seq))
@@ -30,10 +50,10 @@ function align(k::Kallisto,ir::InterpretedRecord)
     end
 end
 
-function Base.close(k::Kallisto)
+function Base.close{lib}(k::Kallisto{lib})
     if k.isopen
         info("Closing kallisto")
-        ccall((:kallisto_lib_destroy,libkallisto),
+        ccall(idtolib(:kallisto_lib_destroy,Val{lib}),
               Void,
               (Ptr{Void},),
               k.ka)
