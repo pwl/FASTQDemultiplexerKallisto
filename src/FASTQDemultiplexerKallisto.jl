@@ -1,7 +1,7 @@
 module FASTQDemultiplexerKallisto
 
 import FASTQDemultiplexer:
-    Output, Interpreter, InterpretedRecord,
+    Output, Protocol, InterpretedRecord,
     mergeoutput
 using DataFrames
 using Cxx
@@ -18,10 +18,8 @@ type OutputKallisto <: Output
     writereport::Bool
 end
 
-function OutputKallisto(protocol::Interpreter;
+function OutputKallisto(protocol::Protocol;
                         index::String = "",
-                        writealignment = true,
-                        writereport = true,
                         kwargs...)
     if !isfile(index)
         error("Could not locate index file $index")
@@ -33,9 +31,7 @@ function OutputKallisto(protocol::Interpreter;
                         umiid = UInt[],
                         groupname = PooledDataArray(String,UInt8,0),
                         alignment = Int[])
-    return OutputKallisto(results,
-                          writealignment,
-                          writereport)
+    return OutputKallisto(results)
 end
 
 function align(ir::InterpretedRecord)
@@ -53,6 +49,8 @@ end
 
 function mergeoutput(outputs::Vector{OutputKallisto};
                      outputdir::String=".",
+                     writealignment = true,
+                     writereport = true,
                      kwargs...)
     if length(outputs) > 1
         results = vcat((o.results for o in outputs)...)
@@ -60,12 +58,12 @@ function mergeoutput(outputs::Vector{OutputKallisto};
         results = outputs[1].results
     end
 
-    if outputs[1].writealignment
+    if writealignment
         mkpath(outputdir)
         writetable(joinpath(outputdir,"alignment.tsv"),results)
     end
 
-    if outputs[1].writereport
+    if writereport
         mkpath(outputdir)
         report(results, outputdir)
     end
