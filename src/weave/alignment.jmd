@@ -1,5 +1,3 @@
-# Kallisto alignment statistics #
-
 ```{julia;echo=false}
 import Weave
 Weave.set_chunk_defaults(Dict{Symbol, Any}(
@@ -15,26 +13,36 @@ using DataFrames
 plotly();
 results = WEAVE_ARGS[:results]
 indexnames = WEAVE_ARGS[:indexnames]
-alignment = by(results,:cellid) do r
+@time alignment = by(results,:cellid) do r
+
+    total=size(r,1)
+    groupname=r[1,:groupname]
+    aligned=sum(x > -1 for x in r[:alignment])
+
+    df=DataFrame(total=total,
+                 groupname=groupname,
+                 aligned=aligned)
+
     if :alignment2 in names(results)
-        DataFrame(total=size(r,1),
-                  aligned=sum(r[:alignment].>-1),
-                  aligned2=sum(r[:alignment2].>-1))
-    else
-        DataFrame(total=size(r,1),
-                  aligned=sum(r[:alignment].>-1))
+        aligned2=sum(x > -1 for x in r[:alignment2])
+        df=join(df,DataFrame(
+            aligned2=sum(x > -1 for x in r[:alignment2])))
     end
+
+    df
+
 end
-alignment = join(alignment,
-                 unique(results[[:cellid,:groupname]]),
-                 on=:cellid)
-alignment = join(alignment,
+
+@time alignment = join(alignment,
                  DataFrame(cellid=alignment[:cellid],
                            percentage=(alignment[:aligned]+1e-4)./(alignment[:total]+1e-4)),
                  on=:cellid)
 maxas = maximum(alignment[:aligned])
 ```
 
+# Kallisto alignment statistics #
+
+Genome: `j indexnames[1]`
 
 ```julia
 begin
@@ -67,14 +75,16 @@ end
 ```julia
 begin
     if :aligned2 in names(alignment)
-        plt = scatter(xaxis = (indexnames[1],:log10,(0.9,maxas)),
-                      yaxis= (indexnames[2],:log10,(0.9,maxas)),
+        plt = scatter(xaxis = (:log10,(0.9,maxas)),
+                      yaxis= (:log10,(0.9,maxas)),
                       aspect_ratio = :equal,
                       title = "Alignment vs different genome.")
 
         scatter!(alignment,
                  :aligned,
                  :aligned2,
+                 xaxis=(indexnames[1],),
+                 yaxis=(indexnames[2],),
                  group=:groupname,
                  markersize=1,
                  alpha=0.5,
