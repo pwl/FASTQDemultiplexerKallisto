@@ -73,11 +73,18 @@ function mergeoutput{OK<:OutputKallisto}(outputs::Vector{OK};
                                          index2::String = "",
                                          name::String = basename(index),
                                          name2::String = basename(index2),
+                                         # subsamplecells::Int = 100_000,
+                                         # subsamplereads::Int = 100_000,
+                                         plotsbackend::String = "plotly",
                                          kwargs...)
     if length(outputs) > 1
         results = vcat((o.results for o in outputs)...)
     else
         results = outputs[1].results
+    end
+
+    if !(plotsbackend in ["plotly", "gr"])
+        error("Unknown backend, try `plotly` or `gr`")
     end
 
     if writealignment
@@ -87,14 +94,15 @@ function mergeoutput{OK<:OutputKallisto}(outputs::Vector{OK};
 
     if writereport
         mkpath(outputdir)
-        report(results, outputdir, [name,name2])
+        report(results, outputdir, [name,name2], plotsbackend)
     end
 end
 
-function report(results, outputdir, names)
+function report(results, outputdir, names, backend)
     args = Dict{Symbol,Any}()
     args[:results] = results
     args[:indexnames] = names
+    args[:backend] = backend
 
     weave(Pkg.dir("FASTQDemultiplexerKallisto",
                   "src","weave","alignment.jmd"),

@@ -10,15 +10,26 @@ Weave.set_chunk_defaults(Dict{Symbol, Any}(
 using Plots
 using StatPlots
 using DataFrames
-plotly();
 results = WEAVE_ARGS[:results]
 indexnames = WEAVE_ARGS[:indexnames]
+backend = WEAVE_ARGS[:backend]
+# subsamplereads = WEAVE_ARGS[:subsamplereads]
+# subsamplecells = WEAVE_ARGS[:subsamplecells]
+
+eval(parse(backend))()
+# plotly();
+
 const doublealignment = :alignment2 in names(results)
 
 @time alignment = by(results,:cellid) do r
 
     groupname=r[1,:groupname]
     totalreads=size(r,1)
+
+    # if 0 < subsamplereads < size(r,1)
+    #     ind = randperm(size(r,1))[1:subsamplereads]
+    #     r = view(r,ind)
+    # end
 
     alignedreads=sum(x > -1 for x in r[:alignment])
     uniqueumis=length(Set(r[:umiid]))
@@ -59,6 +70,13 @@ const doublealignment = :alignment2 in names(results)
 
 end
 
+
+# if 0 < subsamplecells < size(alignment,1)
+#     ind = randperm(size(alignment,1))[1:subsamplecells]
+#     alignment = view(alignment,ind)
+# end
+
+
 maxas = maximum(alignment[:alignedreads])
 if doublealignment
     maxas = max(maxas,maximum(alignment[:alignedreads2]))
@@ -67,7 +85,7 @@ end
 
 # Kallisto alignment statistics #
 
-Found `j size(alignment,1)` cells.
+Found `j size(alignment,1)` and `j size(results,1)` reads.
 
 ```julia
 begin
@@ -83,13 +101,13 @@ begin
              markerstrokewidth=0,
              hover=nothing)
 
-    plot!(collect(0.9:maxas),
-          collect(0.9:maxas),
+    plot!(collect(0.9:10*maxas),
+          collect(0.9:10*maxas),
           hover = false,
           linestyle = :dash,
           linecolor = :red,
-          xaxis = ("total",:log10,(0.9,maxas)),
-          yaxis= ("aligned",:log10,(0.9,maxas)),
+          xaxis = ("total",:log10,(0.9,10*maxas)),
+          yaxis= ("aligned",:log10,(0.9,10*maxas)),
           label = "")
 
     display(plt)
@@ -100,8 +118,8 @@ end
 ```julia
 begin
     if doublealignment
-        plt = scatter(xaxis = (:log10,(0.9,maxas)),
-                      yaxis= (:log10,(0.9,maxas)),
+        plt = scatter(xaxis = (:log10,(0.9,10*maxas)),
+                      yaxis= (:log10,(0.9,10*maxas)),
                       aspect_ratio = :equal,
                       title = "Alignment vs different genome.")
 
@@ -116,8 +134,8 @@ begin
                  markerstrokewidth=0,
                  hover=nothing)
 
-        plot!(collect(0.9:maxas),
-              collect(0.9:maxas),
+        plot!(collect(0.9:10*maxas),
+              collect(0.9:10*maxas),
               hover = false,
               linestyle = :dash,
               linecolor = :red,
