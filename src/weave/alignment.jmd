@@ -181,8 +181,6 @@ begin
                   aligned=sum(f[:alignedreads]))
     end
 
-    writetable("/home/pawel/table.tsv",alignment[[:cellid, :groupname, :totalreads]])
-
     plt = bar(alignmentsummary,:groupname,:total,
               label="total",
               title="Reads per group")
