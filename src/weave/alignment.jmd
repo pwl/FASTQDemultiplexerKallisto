@@ -141,7 +141,7 @@ begin
               label=indexnames[2])
         display(plt)
 
-        plt = plot(title="Percentage of RNA unique for $(indexnames[1])",
+        plt = plot(title="Percentage of RNA unique to $(indexnames[1])",
                    ylims=(0,1.1))
         for df in groupby(rnapercell,:groupname)
             plt = plot!(sort(df,cols=:percentagerna,rev=true),
@@ -153,7 +153,7 @@ begin
         display(plt)
 
         plt = histogram(rnapercell,:percentagerna,
-                        title="Percentage of RNA unique for $(indexnames[1])",
+                        title="Percentage of RNA unique to $(indexnames[1])",
                         group=:groupname,
                         bins=linspace(0,1,20),
                         xlims=(0,1),
@@ -163,7 +163,7 @@ begin
 
         plt = violin(rnapercell,
                      :groupname,:percentagerna,
-                     title="Percentage of RNA unique for $(indexnames[1])",
+                     title="Percentage of RNA unique to $(indexnames[1])",
                      xlabel="",
                      ylims=(0,1.1),
                      ylabel="RNA %")
