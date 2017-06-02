@@ -13,47 +13,70 @@ using DataFrames
 plotly();
 results = WEAVE_ARGS[:results]
 indexnames = WEAVE_ARGS[:indexnames]
+const doublealignment = :alignment2 in names(results)
+
 @time alignment = by(results,:cellid) do r
 
-    total=size(r,1)
     groupname=r[1,:groupname]
-    aligned=sum(x > -1 for x in r[:alignment])
+    totalreads=size(r,1)
 
-    df=DataFrame(total=total,
+    alignedreads=sum(x > -1 for x in r[:alignment])
+    uniqueumis=length(Set(r[:umiid]))
+    uniquerna=length(Set(filter(x->x[2]>-1,zip(r[:umiid],r[:alignment]))))
+    percentagereads=(alignedreads)/(totalreads+1e-4)
+
+    df=DataFrame(totalreads=totalreads,
                  groupname=groupname,
-                 aligned=aligned)
+                 alignedreads=alignedreads,
+                 uniqueumis=uniqueumis,
+                 uniquerna=uniquerna,
+                 percentagereads=percentagereads)
 
-    if :alignment2 in names(results)
-        aligned2=sum(x > -1 for x in r[:alignment2])
-        df=join(df,DataFrame(
-            aligned2=sum(x > -1 for x in r[:alignment2])))
+    if doublealignment
+        alignedreads2=sum(x > -1 for x in r[:alignment2])
+
+        uniquerna =length(Set(filter(
+            x->(x[2]>-1 & x[3]==-1),zip(r[:umiid],r[:alignment],r[:alignment2]))))
+        df[:uniquerna]=uniquerna
+
+        uniquerna2=length(Set(filter(
+            x->(x[3]>-1 & x[2]==-1),zip(r[:umiid],r[:alignment],r[:alignment2]))))
+
+        percentagereads2=(alignedreads2)/(totalreads+1e-4)
+        totalrna=uniquerna+uniquerna2
+        percentagerna=((uniquerna)/(totalrna+1e-4))
+
+        df=hcat(df,
+                DataFrame(
+                    alignedreads2=alignedreads2,
+                    percentagereads2=percentagereads2,
+                    totalrna=totalrna,
+                    uniquerna2=uniquerna2,
+                    percentagerna=percentagerna))
     end
 
     df
 
 end
 
-@time alignment = join(alignment,
-                 DataFrame(cellid=alignment[:cellid],
-                           percentage=(alignment[:aligned]+1e-4)./(alignment[:total]+1e-4)),
-                 on=:cellid)
-maxas = maximum(alignment[:aligned])
+maxas = maximum(alignment[:alignedreads])
+if doublealignment
+    maxas = max(maxas,maximum(alignment[:alignedreads2]))
+end
 ```
 
 # Kallisto alignment statistics #
 
-Genome: `j indexnames[1]`
+Found `j size(alignment,1)` cells.
 
 ```julia
 begin
-    plt = scatter(xaxis = ("total",:log10,(0.9,maxas)),
-                  yaxis= ("aligned",:log10,(0.9,maxas)),
-                  aspect_ratio = :equal,
-                  title = "Aligned vs total reads per cell")
+    plt = scatter(aspect_ratio = :equal,
+                  title = "Reads per cell")
 
     scatter!(alignment,
-             :total,
-             :aligned,
+             :totalreads,
+             :alignedreads,
              group=:groupname,
              markersize=1,
              alpha=0.5,
@@ -65,6 +88,8 @@ begin
           hover = false,
           linestyle = :dash,
           linecolor = :red,
+          xaxis = ("total",:log10,(0.9,maxas)),
+          yaxis= ("aligned",:log10,(0.9,maxas)),
           label = "")
 
     display(plt)
@@ -74,15 +99,15 @@ end
 
 ```julia
 begin
-    if :aligned2 in names(alignment)
+    if doublealignment
         plt = scatter(xaxis = (:log10,(0.9,maxas)),
                       yaxis= (:log10,(0.9,maxas)),
                       aspect_ratio = :equal,
                       title = "Alignment vs different genome.")
 
         scatter!(alignment,
-                 :aligned,
-                 :aligned2,
+                 :alignedreads,
+                 :alignedreads2,
                  xaxis=(indexnames[1],),
                  yaxis=(indexnames[2],),
                  group=:groupname,
@@ -99,6 +124,51 @@ begin
               label = "")
 
         display(plt)
+
+        maxuniquerna = max(maximum(alignment[:uniquerna]),
+                           maximum(alignment[:uniquerna2]))
+        rnapercell = sort(alignment[
+            [:cellid,:groupname,:uniquerna,:uniquerna2,:percentagerna]],
+                          cols=:percentagerna)
+
+        plt = plot(rnapercell,:uniquerna,
+                   label=indexnames[1],
+                   title="Unique RNA per cell",
+                   yaxis=(:log10,(0.9,maxuniquerna)))
+        plot!(rnapercell,:uniquerna2,
+              xlabel="Cell",
+              ylabel="n. of unique RNA",
+              label=indexnames[2])
+        display(plt)
+
+        plt = plot(title="Percentage of RNA unique for $(indexnames[1])",
+                   ylims=(0,1.1))
+        for df in groupby(rnapercell,:groupname)
+            plt = plot!(sort(df,cols=:percentagerna,rev=true),
+                        :percentagerna,
+                        xlabel="Cell",
+                        ylabel="RNA %",
+                        label=df[1,:groupname])
+        end
+        display(plt)
+
+        plt = histogram(rnapercell,:percentagerna,
+                        title="Percentage of RNA unique for $(indexnames[1])",
+                        group=:groupname,
+                        bins=linspace(0,1,20),
+                        xlims=(0,1),
+                        xlabel="RNA %",
+                        ylabel="n. of RNA")
+        display(plt)
+
+        plt = violin(rnapercell,
+                     :groupname,:percentagerna,
+                     title="Percentage of RNA unique for $(indexnames[1])",
+                     xlabel="",
+                     ylims=(0,1.1),
+                     ylabel="RNA %")
+        display(plt)
+
     end
 end
 ```
@@ -107,16 +177,19 @@ end
 ```julia
 begin
     alignmentsummary = by(alignment,:groupname) do f
-        DataFrame(total=sum(f[:total]),
-                  aligned=sum(f[:aligned]))
+        DataFrame(total=sum(f[:totalreads]),
+                  aligned=sum(f[:alignedreads]))
     end
+
+    writetable("/home/pawel/table.tsv",alignment[[:cellid, :groupname, :totalreads]])
+
     plt = bar(alignmentsummary,:groupname,:total,
               label="total",
-              title="Reads per group",
-              yaxis=("n. of reads"),
-              xaxis="")
+              title="Reads per group")
     bar!(alignmentsummary,:groupname,:aligned,
-         label="aligned")
+         label="aligned",
+         ylabel="n. of reads",
+         xlabel="")
     display(plt)
 end
 ```
@@ -124,14 +197,14 @@ end
 
 ```julia
 begin
-    plt = violin(alignment,:groupname,:total,
+    plt = violin(alignment,:groupname,:totalreads,
                  side=:left,
                  label="total",
-                 yaxis=("n. of reads per cell",:log10),
-                 xaxis="",
-                 title="Reads per cell")
-    violin!(alignment,:groupname,:aligned,
+                 title="Reads per group: per cell distribution")
+    violin!(alignment,:groupname,:alignedreads,
             label="aligned",
+            yaxis=("n. of reads per cell",:log10),
+            xaxis="",
             side=:right)
     display(plt)
 end
@@ -140,7 +213,7 @@ end
 
 ```julia
 begin
-    plt = violin(alignment,:groupname,:percentage,
+    plt = violin(alignment,:groupname,:percentagereads,
                  title="Relative alignment",
                  yaxis=("Alignment %",(0,1)),
                  xaxis="",
@@ -152,13 +225,21 @@ end
 
 ```julia
 begin
-    sort!(alignment,cols=:aligned,rev=true)
-    plt = plot(alignment,:aligned,
-               group=:groupname,
-               title="Alignment per cell",
-               xaxis=("Cells",:log10,(0.9,size(alignment,1))),
-               yaxis=("Aligned reads",:log10,(0.9,maximum(alignment[:aligned])))
-               )
+    plt = plot(title="Aligned reads per cell",
+               ylims=(0,1))
+    for df in groupby(alignment,:groupname)
+        plt = plot!(sort(df,cols=:alignedreads,rev=true),
+                    :alignedreads,
+                    xaxis=("Cells",:log10,(0.9,size(alignment,1))),
+                    yaxis=("Aligned reads",:log10,(0.9,maximum(alignment[:alignedreads]))),
+                    label=df[1,:groupname])
+    end
     display(plt)
+end
+```
+
+```julia
+begin
+
 end
 ```

@@ -50,7 +50,7 @@ function align{lib}(k::Kallisto{lib},ir::InterpretedRecord)
     end
 end
 
-function Base.close{lib}(k::Kallisto{lib})
+function free{lib}(k::Kallisto{lib})
     if k.isopen
         info("Closing kallisto")
         ccall(idtolib(:kallisto_lib_destroy,Val{lib}),
